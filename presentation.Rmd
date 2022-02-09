@@ -1,0 +1,957 @@
+---
+title: "Crisis and disaster risks around the world"
+author: "Berkay Ocak & Ezgi Özgen"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output: slidy_presentation
+---
+<style>
+body {
+  background-color: #F5F5F5;
+}
+.quiz-option label{
+  display: inline;
+  font-size: 1em;
+}
+ul.nav li::before { content: ""; }  
+ul.nav li{ font-size: 18px; line-height: 24px;}
+</style>
+
+
+When natural disasters around the world are considered, 28 of 31 natural disasters are seen as meteorological disasters. The 10 most natural disasters is:<br/>
+1. Agricultural diseases & pests<br/>
+2. Damaging Winds<br/>
+3. Earthquakes<br/>
+4. Emergency diseases (pandemic influenza)<br/>
+5. Floods and flash floods<br/>
+6. Hurricanes and tropical storms<br/>
+7. Thunderstorms and lighting<br/>
+8. Tornadoes<br/>
+9. Tsunamis<br/>
+10. Winter and ice storms<br/>
+
+---
+
+# Problem Description
+
+The causes and consequences of natural disasters can be more than one. Natural disasters can cause epidemics and infectious diseases. It delays or stops the investment plans of the state. One of the biggest effects of disasters is that they cause death, injury and disability. Natural disasters can cause trauma to people because they create a shock effect on people. Before natural disasters begin, their severity or impact may not be predicted. It can disrupt the economic order and infrastructure of the region where it occurs. The types and order of importance of natural disasters also vary from country to country. Natural disasters may not just happen spontaneously. There are also human effects. Natural disasters are a threat to the whole world because it is not clear when they will come. It is important to analyze how crisis and disaster risk has changed and where a new or worsening crisis may arise.
+
+---
+
+# Project Problem
+
+Our main problem is that the countries are not prepared for the disasters they may experience and that they do not learn from the past disasters.<br/>
+The aim of our project is to analyze and interpret the future forecast data for 2022 by drawing attention to which disasters and risk ratios countries face.
+
+```{r, warning=F, message=F,echo=FALSE, fig.align='center', fig.cap=''}
+knitr::include_graphics('data/flood.webp')
+```
+
+---
+
+# Data Description and Access Data
+
+We got our data from the official website of the European Commission. According to the European Com- mission, this given meeting purpose”The INFORM Risk Index is a global, open-source risk assessment for humanitarian crises and disasters. It can support decisions about prevention, preparedness and response.”We also chose this catastrophe as the foundation for and design of this modification. On the one hand, the IN- FORM Risk model balances two key forces: the hazard and exposure dimension, and on the other, the vulnerability and lack of coping capacity aspects. Hazard dependent factors are treated in the hazard & exposure dimension, whereas hazard independent factors are divided into two dimensions: vulnerability, which considers the strength of individuals and households in the face of a crisis, and lack of coping capacity, which considers institutional strength.
+
+---
+
+```{r,warning=FALSE,message=FALSE}
+library("readr")
+library("readxl")
+library("tidyverse")
+library("tidyr")
+library("ggpubr")
+data <- read_xlsx("Data/INFORMRISK_2022.xlsx")
+data_Hazard_exposure <-read_xlsx("Data/Hazard&exposure.xlsx")
+data_Indıcatordata <- read_xlsx("Data/Indicatordata.xlsx")
+data_LackOfRealibilty <- read_xlsx("Data/LackOfRealibilty.xlsx")
+data_LackOfcopincapacity <- read_xlsx("Data/LackOfcopincapacity.xlsx")
+data_Regions <- read_xlsx("Data/Regions.xlsx")
+data_Vulnerability <- read_xlsx("Data/Vulnerability.xlsx")
+data_WorldRiskIndex2011_2021<-
+                read_xlsx("Data/WorldRiskIndex2011-2021_time_series.xlsx",skip = 2)
+```
+
+---
+
+<center>
+ 
+**Data visualization**<br/>
+
+Types of graphics we used in this project:<br/>
+* World Map<br/>
+* Lollipop Plots<br/>
+* Bar Plot<br/>
+
+</center>
+
+```{r, warning=F, message=F,echo=FALSE, fig.align='center', fig.cap=''}
+knitr::include_graphics('data/logo.png')
+```
+
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, include=FALSE}
+data_count<-data_Regions %>%
+  select("UN Geographical Region","COUNTRY") %>%
+  rename("UNGeographicalRegion" = "UN Geographical Region")
+```
+
+
+
+```{r, warning=F, message=F}
+library(sf)
+worldregion<-st_read("data/World_Continents")
+worldregion<-worldregion %>%
+  rename("UNGeographicalRegion"="continent")
+
+
+```
+
+---
+
+
+```{r, warning=F, message=F}
+data_Regions2<- data_count %>% 
+  select("UNGeographicalRegion","COUNTRY")%>%
+  group_by(UNGeographicalRegion)%>%
+  summarise(count = n())
+
+deneme = merge(data_Regions2, worldregion, by="UNGeographicalRegion") 
+ 
+
+tablo<-st_as_sf(deneme)
+tablo <- tablo %>%
+    group_by(UNGeographicalRegion)%>%
+  summarise(count = n()) 
+
+st_geometry_type(tablo)
+
+```
+
+---
+
+```{r, warning=F, message=F}
+
+library(tmap)
+
+map11 <- tablo %>% 
+          tm_shape() +
+          tm_fill(col = "count", 
+                  palette = "Spectral", 
+                  title = "country distribution by region") + 
+          tm_borders() +
+          tm_layout(title = "count of country", 
+                    title.size = 1, 
+                    title.fontface = "bold",
+                    legend.title.size = 0.6,
+                    legend.outside = TRUE)
+
+
+```
+
+---
+
+Continental distribution of countries in our data:
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+map11
+```
+
+---
+
+
+```{r, warning=F, message=F, echo=FALSE, include=FALSE}
+Risk_Data <- data %>% 
+  select("INFORM RISK","COUNTRY","LACK OF COPING CAPACITY","VULNERABILITY",
+         "HAZARD & EXPOSURE","RISK CLASS","Earthquake","Flood","Tsunami","Epidemic","Economic Dependency","Access to health care") %>%
+  rename("INFORMRISK" = "INFORM RISK",
+         "HAZARDEXPOSURE" = "HAZARD & EXPOSURE",
+         "LACKOFCOPINGCAPACITY"="LACK OF COPING CAPACITY",
+         "RISKCLASS"="RISK CLASS") %>%
+  filter(RISKCLASS== "Very High") %>%
+  mutate(id = seq(1,14)) 
+row.names(Risk_Data)[row.names(Risk_Data) == "Central African Republic"] <- "CAR"
+
+
+```
+
+In our data, the risk rate is examined in 5 categories as **very low** , **low**, **medium**, **high** and **very high**.<br/>  
+The risk ratio, which is our main data, is calculated as <br/> 
+$$ Risk = HazardExposure\frac{1}{3}* Vulnerability*\frac{1}{3}*Lack of coping capacity*\frac{1}{3} $$ <br/> 
+as mentioned before. <br/> 
+* Exposure to earthquakes, storms, floods, drought, and sea-level rise <br/> 
+* Susceptibility depending on infrastructure, food supply, and economic framework conditions<br/> 
+* Coping capacities depending on governance, health care, social and material security<br/> 
+* Adaptive capacities related to upcoming natural events, climate change,and other challenges. <br/> 
+In this report, countries with a very high overall risk level will be examined. Topics such as which disasters are more likely to occur in these countries and which disasters should countries given first priority were examined and tried to be visualized.
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+knitr::include_graphics('data/Description.jpeg')
+```
+
+---
+
+**Hazard & Exposure**<br/> 
+It is calculated as a result of physical exposure to hazard and exposure risks. It measures that people who are exposed to these events have to take when faced with a disaster or crisis. It is calculated with the subcomponents we showed in the previous slide.<br/> 
+**Vulnerability**<br/> 
+It focuses on the material and moral damage that disasters cause on people. Calculates exactly how much the exposed community is affected and how sensitive it is. This ratio indicates the economic, political and social characteristics.<br/>
+**Lack Of Coping Capacity**<br/> 
+It is the fail rate of the measures taken by governments and the community against disaster risks. It shows the resilience of the society. If this rate is high, it is bad for countries.
+
+---
+
+The chart below shows the risk ratios of the countries we will examine:<br/> 
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+analyzed_data <- data%>%
+  select("COUNTRY","INFORM RISK")%>%
+  rename("RiskRate"="INFORM RISK")%>%
+  filter(RiskRate>=6.5)%>%
+  arrange(RiskRate)
+ggplot(analyzed_data,aes(x=reorder(COUNTRY,RiskRate),y=RiskRate))+
+  geom_bar(stat="identity",
+         width=0.6, fill="red")+
+  theme_minimal()+
+  coord_flip()+
+  geom_text(aes(label=RiskRate),Color="Black",position = position_stack(vjust = 1.05))+
+  theme(
+        plot.title = element_text(hjust=0.5, size=20),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+
+```
+
+```{r, warning=F, message=F, echo=FALSE,result ='hide',include=FALSE}
+data_Hazard_exposure <- data_Hazard_exposure %>% 
+  select("Population...95","COUNTRY","INFORM Natural Hazard","INFORM Human Hazard") %>%
+  rename("Population" = "Population...95","INFORMNaturalHazard" = "INFORM Natural Hazard",
+         "INFORMHumanHazard" = "INFORM Human Hazard") 
+data_Vulnerability <- data_Vulnerability %>% 
+  select("Food Availability Score","COUNTRY","Natural Disasters % of total pop") %>%
+  rename("FoodAvailabilityScore" = "Food Availability Score","NaturalDisastersoftotalpop" = "Natural Disasters % of total pop") 
+
+data_LackOfcopincapacity <- data_LackOfcopincapacity %>% 
+  select("Drinking water","COUNTRY","Government Effectiveness") %>%
+  rename("GovernmentEffectiveness" = "Government Effectiveness","Drinkingwater" = "Drinking water")
+```
+
+
+```{r, warning=F, message=F, echo=FALSE, include=FALSE, result ='hide'}
+library("sqldf")
+Hazard_Exposure <- sqldf("SELECT COUNTRY, INFORMRISK, Population, INFORMNaturalHazard, INFORMHumanHazard 
+              FROM Risk_Data
+              JOIN data_Hazard_exposure USING(COUNTRY)")
+data_Vulnerability <- sqldf("SELECT COUNTRY, INFORMRISK, FoodAvailabilityScore, NaturalDisastersoftotalpop 
+              FROM Risk_Data
+              JOIN data_Vulnerability USING(COUNTRY)")
+data_Vulnerability
+dat_LackOfcopincapacity  <- sqldf("SELECT COUNTRY, INFORMRISK, GovernmentEffectiveness, Drinkingwater  
+              FROM Risk_Data
+              JOIN data_LackOfcopincapacity USING(COUNTRY)")
+
+```
+
+---
+
+Human population affected by disasters:<br/> 
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+
+k6<-ggplot(Hazard_Exposure, aes(x=COUNTRY, y=Population)) +
+  geom_segment( aes(x=COUNTRY, xend=COUNTRY, y=3, yend=Population), color="skyblue") +
+  geom_point( color="blue", size=2, alpha=0.9) +
+  theme_light() +
+  coord_flip() +
+  theme(
+    axis.title.y= element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+k6<-k6+labs(y = "Populations (in Million)")
+k6
+```
+
+---
+
+Natural and Human Hazards graphs:<br/> 
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+h2<-ggplot(Hazard_Exposure, aes(x = COUNTRY, y = INFORMNaturalHazard)) +
+  geom_bar(stat="identity", 
+           position="identity", 
+           fill="#9933FF") +
+  geom_hline(yintercept = 0, size = 1, colour="#333333") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.7, hjust=1))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank())+
+  labs(title="Natural Hazard")
+
+
+
+h1<-ggplot(Hazard_Exposure, aes(x = COUNTRY, y = INFORMHumanHazard)) +
+  geom_bar(stat="identity", 
+           position="identity", 
+           fill="#1380A1") +
+  geom_hline(yintercept = 0, size = 1, colour="#333333") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.7, hjust=1))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank())+
+  labs(title="Human Hazard")
+
+ggarrange(h1,h2 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+k5<-ggplot(Risk_Data, aes(x = COUNTRY, y = HAZARDEXPOSURE)) +
+  geom_bar(stat="identity", 
+           position="identity", 
+           fill="#B983FF") +
+  geom_hline(yintercept = 0, size = 1, colour="#333333") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank())+
+  labs(title="HAZARD EXPOSURE")
+k4<-ggplot(dat_LackOfcopincapacity, aes(x=COUNTRY, y=GovernmentEffectiveness))+
+geom_col(fill="#FFC4E1")+
+coord_flip()+
+theme_minimal()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank())+
+labs(x="Countries" , y="Government Effective",
+     title=" Government Effective") 
+ggarrange(k5,k4 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+
+k3<-ggplot(dat_LackOfcopincapacity, aes(x=COUNTRY, y=Drinkingwater))+
+geom_col(fill="#FF87CA")+
+coord_flip()+
+theme_minimal()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank())+
+labs(title=" Drinking Water")
+k2<-ggplot(Risk_Data, aes(x = COUNTRY, y = LACKOFCOPINGCAPACITY)) +
+  geom_bar(stat="identity", 
+           position="identity", 
+           fill="#B983FF") +
+  geom_hline(yintercept = 0, size = 1, colour="#333333") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.7, hjust=1))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank())+
+  labs(title="Lack of capacity")
+
+ggarrange(k3,k2 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+k1<- ggplot(data_Vulnerability, aes(x=COUNTRY, y=FoodAvailabilityScore))+
+geom_col(fill="#064663")+
+coord_flip()+
+theme_minimal()+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank())+
+labs(x="Countries" , y="food availability",
+     title="FOOD AVAILABILITY SCORE")
+k7<-ggplot(Risk_Data, aes(x = COUNTRY, y = VULNERABILITY)) +
+  geom_bar(stat="identity", 
+           position="identity", 
+           fill="#041C32") +
+  geom_hline(yintercept = 0, size = 1, colour="#333333") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.7, hjust=1))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank())+
+  labs(title="Vulnerability")
+ggarrange(k1,k7 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+Let's examine the countries according to the activities they encounter within themselves:
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+subset_data <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Mozambique")
+RiskRates<-c(subset_data["Earthquake"],subset_data["Flood"],subset_data["Tsunami"],
+             subset_data["Epidemic"],subset_data["Access to health care"],subset_data["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df<-data.frame(row.names =(1:6))
+df$Disasters=rwnm
+df$RiskRates=as.numeric(RiskRates)
+p1<-ggplot(df,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="#B91646")+
+  labs(title="Mozambique")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+
+subset_data <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Niger")
+RiskRates<-c(subset_data["Earthquake"],subset_data["Flood"],subset_data["Tsunami"],
+             subset_data["Epidemic"],subset_data["Access to health care"],subset_data["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df<-data.frame(row.names =(1:6))
+df$Disasters=rwnm
+df$RiskRates=as.numeric(RiskRates)
+p2<-ggplot(df,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="#864879")+
+  labs(title="Niger")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+ggarrange(p1,p2 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+subset_data <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Nigeria")
+RiskRates<-c(subset_data["Earthquake"],subset_data["Flood"],subset_data["Tsunami"],
+             subset_data["Epidemic"],subset_data["Access to health care"],subset_data["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df<-data.frame(row.names =(1:6))
+df$Disasters=rwnm
+df$RiskRates=as.numeric(RiskRates)
+p3<-ggplot(df,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="#6B4F4F")+
+  labs(title="Nigeria")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+
+subset_data <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Ethiopia")
+RiskRates<-c(subset_data["Earthquake"],subset_data["Flood"],subset_data["Tsunami"],
+             subset_data["Epidemic"],subset_data["Access to health care"],subset_data["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df<-data.frame(row.names =(1:6))
+df$Disasters=rwnm
+df$RiskRates=as.numeric(RiskRates)
+p4<-ggplot(df,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="#C37B89")+
+  labs(title="Ethiopia")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+ggarrange(p3,p4 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+subset_data <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Iraq")
+RiskRates<-c(subset_data["Earthquake"],subset_data["Flood"],subset_data["Tsunami"],
+             subset_data["Epidemic"],subset_data["Access to health care"],subset_data["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df<-data.frame(row.names =(1:6))
+df$Disasters=rwnm
+df$RiskRates=as.numeric(RiskRates)
+p5<-ggplot(df,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="#6D9886")+
+  labs(title="Iraq")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+
+subset_data <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Syria")
+RiskRates<-c(subset_data["Earthquake"],subset_data["Flood"],subset_data["Tsunami"],
+             subset_data["Epidemic"],subset_data["Access to health care"],subset_data["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df<-data.frame(row.names =(1:6))
+df$Disasters=rwnm
+df$RiskRates=as.numeric(RiskRates)
+p6<-ggplot(df,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="#150050")+
+  labs(title="Syria")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+ggarrange(p5,p6 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+subset_data <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Mali")
+RiskRates<-c(subset_data["Earthquake"],subset_data["Flood"],subset_data["Tsunami"],
+             subset_data["Epidemic"],subset_data["Access to health care"],subset_data["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df<-data.frame(row.names =(1:6))
+df$Disasters=rwnm
+df$RiskRates=as.numeric(RiskRates)
+p7<-ggplot(df,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="#5E454B")+
+  labs(title="Mali")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+subset_data1 <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Congo DR")
+RiskRates<-c(subset_data1["Earthquake"],subset_data1["Flood"],subset_data1["Tsunami"],
+             subset_data1["Epidemic"],subset_data1["Access to health care"],subset_data1["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df8<-data.frame(row.names =(1:6))
+df8$Disasters=rwnm
+df8$RiskRates=as.numeric(RiskRates)
+p8<-ggplot(df8,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="orange")+
+  labs(title="Congo DR")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=5),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+ggarrange(p7,p8 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+subset_data2 <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Central African Republic")
+RiskRates<-c(subset_data2["Earthquake"],subset_data2["Flood"],subset_data2["Tsunami"],
+             subset_data2["Epidemic"],subset_data2["Access to health care"],
+             subset_data2["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df9<-data.frame(row.names =(1:6))
+df9$Disasters=rwnm
+df9$RiskRates=as.numeric(RiskRates)
+p9<-ggplot(df9,aes(x=Disasters,y=RiskRates))+
+  geom_segment( aes(x=reorder(Disasters,RiskRates) ,xend=Disasters, y=0, yend=RiskRates), color="orange")+
+  geom_point(size=1, color="hotpink") +
+  coord_flip() +
+  labs(title="Central African Republic")+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(hjust=0.5, size=5),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.position="none",
+    axis.title.x =element_blank(),
+    axis.title.y=element_blank())
+
+subset_data3 <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Chad")
+RiskRates<-c(subset_data3["Earthquake"],subset_data3["Flood"],subset_data3["Tsunami"],
+             subset_data3["Epidemic"],subset_data3["Access to health care"],
+             subset_data3["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df10<-data.frame(row.names =(1:6))
+df10$Disasters=rwnm
+df10$RiskRates=as.numeric(RiskRates)
+p10<-ggplot(df10,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="chartreuse3")+
+  labs(title="Chad")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=5),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+ggarrange(p9,p10 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+subset_data4 <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Afghanistan")
+RiskRates<-c(subset_data4["Earthquake"],subset_data4["Flood"],subset_data4["Tsunami"],
+             subset_data4["Epidemic"],subset_data4["Access to health care"],
+             subset_data4["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df11<-data.frame(row.names =(1:6))
+df11$Disasters=rwnm
+df11$RiskRates=as.numeric(RiskRates)
+p11<-ggplot(df11,aes(x=Disasters,y=RiskRates))+
+  geom_segment( aes(x=reorder(Disasters,-RiskRates) ,xend=Disasters, y=0, yend=RiskRates)
+                ,color="darkslategray1")+
+  geom_point(size=1, color="darkred") +
+  coord_flip() +
+  labs(title="Afghanistan")+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(hjust=0.5, size=5),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.position="none",
+    axis.title.x =element_blank(),
+    axis.title.y=element_blank())
+subset_data5 <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Yemen")
+RiskRates<-c(subset_data5["Earthquake"],subset_data5["Flood"],subset_data5["Tsunami"],
+             subset_data5["Epidemic"],subset_data5["Access to health care"],
+             subset_data5["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df12<-data.frame(row.names =(1:6))
+df12$Disasters=rwnm
+df12$RiskRates=as.numeric(RiskRates)
+p12<-ggplot(df12,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="purple")+
+  labs(title="Yemen")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=5),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+ggarrange(p11,p12 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+subset_data6 <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="South Sudan")
+RiskRates<-c(subset_data6["Earthquake"],subset_data6["Flood"],subset_data6["Tsunami"],
+             subset_data6["Epidemic"],subset_data6["Access to health care"],
+             subset_data6["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df13<-data.frame(row.names =(1:6))
+df13$Disasters=rwnm
+df13$RiskRates=as.numeric(RiskRates)
+p13<-ggplot(df13,aes(x=Disasters,y=RiskRates))+
+  geom_segment( aes(x=reorder(Disasters,RiskRates) ,xend=Disasters, y=0, yend=RiskRates)
+                ,color="cadetblue1")+
+  geom_point(size=1, color="mediumorchid4") +
+  coord_flip() +
+  labs(title="South Sudan")+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(hjust=0.5, size=5),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.position="none",
+    axis.title.x =element_blank(),
+    axis.title.y=element_blank())
+subset_data7 <- data%>%
+  select("COUNTRY","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  filter(COUNTRY=="Somalia")
+RiskRates<-c(subset_data7["Earthquake"],subset_data7["Flood"],subset_data7["Tsunami"],
+             subset_data7["Epidemic"],subset_data7["Access to health care"],
+             subset_data7["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df14<-data.frame(row.names =(1:6))
+df14$Disasters=rwnm
+df14$RiskRates=as.numeric(RiskRates)
+p14<-ggplot(df14,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="dodgerblue4")+
+  labs(title="Somalia")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=5),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+ggarrange(p13,p14 ,ncol = 2, nrow = 1,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+# Missing & Dirty Data
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+knitr::include_graphics('data/DirtyData.jpeg')
+```
+
+---
+
+
+```{r, warning=F, message=F}
+
+data_OldRisk<-data_WorldRiskIndex2011_2021%>% 
+  select("...1","2021...13","2021...36","2021...59","2021...128")%>%
+  rename("COUNTRY" = "...1")%>%
+  rename("RiskValue" = "2021...13")%>%
+  rename("HazardExposure" = "2021...36")%>%
+  rename("Vulnerability" = "2021...59")%>%
+  rename("LackOfCapacity" = "2021...128")%>%
+  filter(COUNTRY %in% c("Somalia","South Sudan", "Yemen", "Afghanistan","Chad", "Central African Republic", "Congo DR", "Niger","Mozambique","Syria","Mali", "Ethiopia", "Iraq","Nigeria"))
+
+data_OldRisk$HazardExposure = (data_OldRisk$HazardExposure*5/10)
+data_OldRisk$Vulnerability = (data_OldRisk$Vulnerability/10)
+data_OldRisk$LackOfCapacity = (data_OldRisk$LackOfCapacity/10)
+data_OldRisk$RiskValue = round((data_OldRisk$LackOfCapacity*(1/3)+data_OldRisk$Vulnerability*(1/3)+data_OldRisk$HazardExposure*(1/3)),1)
+```
+
+---
+
+We compared last year's risks with this year's risks :
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+knitr::kable(Risk_Data[,1:5],"pipe",col.names = c("InformRisk",
+                           "Country",
+                           "lackOfCapacity",
+                           "Vulnerability",
+                           "HazardExposure"),caption = "2022 Inform Risk Data") 
+ 
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+knitr::kable(data_OldRisk[,1:5],"pipe",caption = "2021 Inform Risk Data ") 
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+p0<-ggplot(data_OldRisk, aes(x = COUNTRY, y = RiskValue)) +
+    geom_bar(stat="identity",
+         width=0.8, fill="#655D8A")+
+  theme_minimal()+
+  coord_flip()+
+  geom_text(aes(label=RiskValue),Color="Black",position = position_stack(vjust = 0.8))+
+  theme(
+        plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())+
+  ggtitle("Risk value 2021")
+p<-ggplot(data_OldRisk, aes(x = COUNTRY, y = HazardExposure)) +
+    geom_bar(stat="identity",
+         width=0.8, fill="#655D8A")+
+  theme_minimal()+
+  coord_flip()+
+  geom_text(aes(label=HazardExposure),Color="Black",position = position_stack(vjust = 0.8))+
+  theme(
+        plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())+
+  ggtitle("Hazard Exposure 2021")
+
+p2<-ggplot(data_OldRisk, aes(x = COUNTRY, y = Vulnerability)) +
+    geom_bar(stat="identity",
+         width=0.8, fill="#D885A3")+
+  theme_minimal()+
+  coord_flip()+
+  geom_text(aes(label=Vulnerability),Color="Black",position = position_stack(vjust = 0.8))+
+  theme(
+        plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())+
+  ggtitle("Vulnerability 2021")
+p3<-ggplot(data_OldRisk, aes(x = COUNTRY, y = LackOfCapacity)) +
+    geom_bar(stat="identity",
+         width=0.8, fill="#9C0F48")+
+  theme_minimal()+
+  coord_flip()+
+  geom_text(aes(label=LackOfCapacity),Color="Black",position = position_stack(vjust = 0.8))+
+  theme(
+        plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())+
+  ggtitle("Lack Of capacity 2021")
+ggarrange(p0,p,p2,p3 ,ncol = 2, nrow = 2,align = "hv",
+          common.legend = TRUE, legend = "bottom")
+```
+
+---
+
+
+Now let's examine Turkey's risk ratios by comparing them with high-risk countries.
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+turkey<-data%>%
+  select("COUNTRY","INFORM RISK","Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")%>%
+  rename("Risk Rate"="INFORM RISK")%>%
+  filter(COUNTRY=="Turkey")
+RiskRates<-c(turkey["Earthquake"],turkey["Flood"],turkey["Tsunami"],
+             turkey["Epidemic"],turkey["Access to health care"],turkey["Economic Dependency"])
+rwnm=c("Earthquake","Flood","Tsunami","Epidemic","Access to health care","Economic Dependency")
+df<-data.frame(row.names =(1:6))
+df$Disasters=rwnm
+df$RiskRates=as.numeric(RiskRates)
+trpl<-ggplot(df,aes(x=Disasters,y=RiskRates))+
+  geom_bar(stat="identity",
+         width=0.3, fill="brown1")+
+  labs(title="Turkey")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5, size=10),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+trpl
+
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+data_earth<-data%>%
+            select("COUNTRY","INFORM RISK","Earthquake")%>%
+            rename("RiskRate"="INFORM RISK")%>%
+            filter(RiskRate>=6.5 | COUNTRY=="Turkey" )%>%
+            arrange(Earthquake)
+ggplot(data_earth,aes(x=reorder(COUNTRY,Earthquake),y=Earthquake))+
+  geom_bar(stat="identity",
+         width=0.6, fill="brown")+
+  labs(title="Earthquake Risk of Countries")+
+  theme_minimal()+
+  coord_flip()+
+  theme(
+        plot.title = element_text(hjust=0.5, size=20),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+```
+
+---
+
+```{r, warning=F, message=F, echo=FALSE, fig.align='center', fig.cap=''}
+data_earth<-data%>%
+            select("COUNTRY","INFORM RISK","Tsunami")%>%
+            rename("RiskRate"="INFORM RISK")%>%
+            filter(RiskRate>=6.5 | COUNTRY=="Turkey" )%>%
+            arrange(Tsunami)
+ggplot(data_earth,aes(x=reorder(COUNTRY,Tsunami),y=Tsunami))+
+  geom_bar(stat="identity",
+         width=0.6, fill="#7897AB")+
+  labs(title="Tsunami Risk of Countries")+
+  theme_minimal()+
+  coord_flip()+
+  theme(
+        plot.title = element_text(hjust=0.5, size=20),
+        axis.text.x=element_text(hjust = 0, angle=90),
+        axis.title.x =element_blank(),
+        axis.title.y=element_blank(),
+        axis.line=element_blank())
+```
+
+---
+
+# Challanges
+
+We had difficulty cleaning data with missing data. Since there is a lot of data that connects each other, we decided how to proceed by doing long research in the process.
+
+```{r,warning=F, message=F, echo=FALSE}
+knitr::include_graphics('data/kodlama.jpeg')
+```
+
+
+---
+
+# Conclusion
+
+In our project, data was visualized with various graphic types to reach the result. First, the countries in our data were grouped on the basis of which continent and shown on a world map. In this way, by understanding the natural disasters in the continents, he provided a better understanding of the countries. It was thought that it would be good in terms of warning-precaution to include high-risk countries in the study. In the first part, it was stated that the risk ratio is divided into three as Lack of capacity, hazard-exposure, vulnerability. When viewed on the basis of Hazard-exposure, it is divided into two: population and human/natural disaster. A line chart containing the population was made. Based on the population, it was interpreted how many people would be affected by disasters in countries. Before looking at the disaster basis, the general risk ratios were examined to see how the disasters, which are divided into human and natural, affect the countries. In general, hazard-exposure was examined and a bar plot was used for this. Secondly, it was divided into two in terms of Lack of capacity. Government Effective and drinking water. These two separations were analyzed with a bar plot. Lack of capacity was viewed in general. Food availability score and natural disasters of total population of country rates were analyzed in terms of vulnerability. Plotted with the general vulnerability bar plot for more precise information. Each country was graphically analyzed in terms of Access to health care, Earthquake, Economic depency, epidemic, flood, tsunami as man-made and natural disasters. In order to observe the development of these countries and the calculated data, a comparison was made with the risk data in 2021 and interpreted graphically as a table. Lastly, Turkey's earthquake and tsunami comparison and risk ratios were charted.
+
+---
+
+# References
+
+https://afad.gov.tr/
+
+https://www.readcube.com/articles/10.4314%2Fjasem.v13i2.55295 [1]
+
+http://www.koeri.boun.edu.tr/sismo/2/tsunami/tarihsel-tsunamiler/turkiyedeki-onemli-tsunamiler
+
+https://tr.wikipedia.org
+
+https://drmkc.jrc.ec.europa.eu/inform-index/INFORM-Risk/Results-and-data/moduleId/1782/id/433/controller/Admin/action/Results.
+
+https://thinkhazard.org/en/report/170-mozambique/TS
+
+https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.fbu.edu.tr%2Fakademik%2F176%2Fkodlama-teknolojik-okur-yazarlik&psig=AOvVaw1oaIZqFtzHyd6xZr3QMnMp&ust=1643495449945000&source=images&cd=vfe&ved=0CAsQjRxqFwoTCPDk2eq_1fUCFQAAAAAdAAAAABAD
+
+https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.aljazeera.com%2Fnews%2F2020%2F8%2F29%2Fniger-flooding-at-least-45-killed-226000-displaced&psig=AOvVaw2D9U_BqB3xQrQ-tzB8703c&ust=1643495502315000&source=images&cd=vfe&ved=0CAsQjRxqFwoTCKirsoDA1fUCFQAAAAAdAAAAABAD
+
+https://www.google.com/url?sa=i&url=https%3A%2F%2Fggplot2.tidyverse.org%2F&psig=AOvVaw2CcOYXSBpyd3UH2gMvT-ka&ust=1643496994561000&source=images&cd=vfe&ved=0CAsQjRxqFwoTCKDhiMjF1fUCFQAAAAAdAAAAABAK
+
+
+
